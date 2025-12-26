@@ -5,8 +5,8 @@ import { Layout } from '@/components/Layout';
 import { VideoCard } from '@/components/VideoCard';
 import { FilterBar } from '@/components/FilterBar';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+// CHANGED: Removed Supabase imports
+import { apiClient } from '@/lib/api'; 
 import { useToast } from '@/hooks/use-toast';
 
 type VideoStatus = 'uploading' | 'processing' | 'safe' | 'flagged' | 'error';
@@ -19,6 +19,7 @@ interface VideoData {
   duration: number | null;
   created_at: string;
   file_path: string;
+  thumbnailUrl?: string; // Added to support thumbnails
 }
 
 export default function Dashboard() {
@@ -26,54 +27,63 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | VideoStatus>('all');
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      fetchVideos();
-      subscribeToUpdates();
+    // CHANGED: Auth check using LocalStorage token instead of useAuth hook
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/auth');
+      return;
     }
-  }, [user]);
+    fetchVideos(token);
+  }, [navigate]);
 
-  const fetchVideos = async () => {
-    const { data, error } = await supabase
-      .from('videos')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const fetchVideos = async (token: string) => {
+    try {
+      // CHANGED: Use apiClient instead of supabase.from()
+      const data = await apiClient.getVideos(token);
+      
+      // MAPPING: Convert MongoDB data (_id) to Frontend structure (id)
+      const mappedVideos: VideoData[] = Array.isArray(data) 
+        ? data.map((v: any) => ({
+            id: v._id,
+            title: v.title,
+            // Default status to 'safe' since we don't have processing logic yet
+            status: 'safe', 
+            processing_progress: 100,
+            duration: v.duration || 0,
+            created_at: v.createdAt,
+            file_path: v.videoUrl,
+            thumbnailUrl: v.thumbnailUrl
+          }))
+        : [];
 
-    if (error) {
+      setVideos(mappedVideos);
+    } catch (error) {
       console.error('Error fetching videos:', error);
-    } else {
-      setVideos(data as VideoData[]);
+      toast({ title: 'Error', description: 'Failed to fetch videos', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const subscribeToUpdates = () => {
-    const channel = supabase
-      .channel('videos-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setVideos(prev => [payload.new as VideoData, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setVideos(prev => prev.map(v => v.id === payload.new.id ? payload.new as VideoData : v));
-        } else if (payload.eventType === 'DELETE') {
-          setVideos(prev => prev.filter(v => v.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  };
+  // REMOVED: subscribeToUpdates (Real-time not supported in this simple backend version yet)
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('videos').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to delete video', variant: 'destructive' });
-    } else {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // CHANGED: Use apiClient instead of supabase
+      await apiClient.deleteVideo(token, id);
+      
+      // Update local state
+      setVideos(prev => prev.filter(v => v.id !== id));
       toast({ title: 'Deleted', description: 'Video removed successfully' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete video', variant: 'destructive' });
     }
   };
 
