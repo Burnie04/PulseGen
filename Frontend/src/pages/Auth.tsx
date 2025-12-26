@@ -29,7 +29,7 @@ export default function Auth() {
       if (error) {
         toast({
           title: 'Error',
-          description: error.message,
+          description: error.toString(),
           variant: 'destructive',
         });
       } else {

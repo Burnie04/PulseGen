@@ -45,8 +45,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
       
-      await apiClient.uploadVideo(token, file, title, description);
-
       toast({
         title: "Success!",
         description: "Video uploaded successfully.",
