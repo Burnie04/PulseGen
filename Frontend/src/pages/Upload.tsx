@@ -1,193 +1,168 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload as UploadIcon, X, FileVideo } from 'lucide-react';
-import { Layout } from '@/components/Layout';
-import { UploadProgress } from '@/components/UploadProgress';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { Upload as UploadIcon, X, FileVideo, CheckCircle } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { useToast } from '../hooks/use-toast';
+import { apiClient } from '../lib/api';
+import { Layout } from '../components/Layout';
 
-export default function UploadPage() {
+export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  const [dragActive, setDragActive] = useState(false);
-  const { user } = useAuth();
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files?.[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.type.startsWith('video/')) {
-        setFile(droppedFile);
-        if (!title) setTitle(droppedFile.name.replace(/\.[^/.]+$/, ''));
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      
+      if (selectedFile.type.startsWith('video/')) {
+        setFile(selectedFile);
       } else {
-        toast({ title: 'Invalid file', description: 'Please upload a video file', variant: 'destructive' });
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a video file.",
+          variant: "destructive"
+        });
+        e.target.value = ""; 
       }
     }
-  }, [title, toast]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setFile(e.target.files[0]);
-      if (!title) setTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
-    }
   };
 
-  const handleUpload = async () => {
-    if (!file || !user || !title.trim()) return;
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file || !title) return;
 
-    setUploadStatus('uploading');
-    setUploadProgress(0);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/auth');
+      return;
+    }
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      setUploading(true);
+      
+      await apiClient.uploadVideo(token, file, title, description);
 
-      // Simulate progress for upload
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('videos')
-        .upload(filePath, file);
-
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      if (uploadError) throw uploadError;
-
-      // Create video record
-      const { error: dbError } = await supabase.from('videos').insert({
-        user_id: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
-        status: 'processing',
-        processing_progress: 0,
+      toast({
+        title: "Success!",
+        description: "Video uploaded successfully.",
       });
 
-      if (dbError) throw dbError;
-
-      setUploadStatus('success');
-      toast({ title: 'Upload complete!', description: 'Your video is now being processed.' });
+      navigate('/dashboard');
+      setFile(null);
+      setTitle('');
+      setDescription('');
       
-      setTimeout(() => navigate('/dashboard'), 1500);
-    } catch (error) {
-      console.error('Upload error:', error);
-      setUploadStatus('error');
-      toast({ title: 'Upload failed', description: 'Please try again', variant: 'destructive' });
+    } catch (error: unknown) {
+      // 1. FIX: Use 'unknown' type and safely extract message
+      console.error('Upload failed:', error);
+      const errorMessage = error instanceof Error ? error.message : "Something went wrong while uploading.";
+
+      toast({
+        title: "Upload Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      // 2. FIX: Always turn off loading state, even on error
+      setUploading(false);
     }
   };
-
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Upload Video</h1>
-          <p className="text-muted-foreground mt-1">Upload a video for content analysis</p>
+      <div className="max-w-2xl mx-auto py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold font-display">Upload Video</h1>
+          <p className="text-muted-foreground mt-2">
+            Share your content with the world. Supported formats: MP4, WebM.
+          </p>
         </div>
 
-        <div className="glass-card rounded-xl p-6 space-y-6">
-          {/* Drop zone */}
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-              dragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'
-            }`}
-          >
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <FileVideo className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">Drag and drop your video here</p>
-            <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
-            <p className="text-xs text-muted-foreground mt-4">Supports MP4, WebM, MOV up to 500MB</p>
-          </div>
-
-          {file && uploadStatus === 'idle' && (
-            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <div className="flex items-center gap-3">
-                <FileVideo className="h-5 w-5 text-primary" />
-                <span className="text-sm font-medium truncate">{file.name}</span>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
-                <X className="h-4 w-4" />
-              </Button>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <form onSubmit={handleUpload} className="space-y-6">
+            
+            {/* File Drop Zone / Preview */}
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors relative">
+              {file ? (
+                <div className="flex flex-col items-center">
+                  <FileVideo className="h-12 w-12 text-blue-500 mb-3" />
+                  <p className="font-medium text-gray-900">{file.name}</p>
+                  <p className="text-sm text-gray-500 mb-4">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  <button 
+                    type="button"
+                    onClick={() => setFile(null)}
+                    className="text-red-500 text-sm hover:underline flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-1" /> Remove file
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    id="video-upload"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <label 
+                    htmlFor="video-upload"
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <div className="h-12 w-12 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                      <UploadIcon className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <span className="text-lg font-medium text-gray-900">Click to upload video</span>
+                    <span className="text-sm text-gray-500 mt-1">or drag and drop here</span>
+                  </label>
+                </>
+              )}
             </div>
-          )}
 
-          {uploadStatus !== 'idle' && file && (
-            <UploadProgress
-              fileName={file.name}
-              progress={uploadProgress}
-              status={uploadStatus === 'uploading' ? 'uploading' : uploadStatus === 'success' ? 'success' : 'error'}
-            />
-          )}
-
-          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
+              <label className="text-sm font-medium">Video Title</label>
               <Input
-                id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter video title"
-                className="bg-secondary"
+                placeholder="Give your video a catchy title"
+                required
               />
             </div>
 
+            {/* Description Input */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <label className="text-sm font-medium">Description</label>
               <Textarea
-                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description (optional)"
-                className="bg-secondary min-h-[100px]"
+                placeholder="What is this video about?"
+                rows={4}
               />
             </div>
-          </div>
 
-          <Button
-            onClick={handleUpload}
-            disabled={!file || !title.trim() || uploadStatus === 'uploading'}
-            className="w-full glow-soft"
-          >
-            <UploadIcon className="h-4 w-4 mr-2" />
-            {uploadStatus === 'uploading' ? 'Uploading...' : 'Upload Video'}
-          </Button>
+            {/* Submit Button */}
+            <Button 
+              type="submit" 
+              className="w-full h-11 text-lg"
+              disabled={uploading || !file || !title}
+            >
+              {uploading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Uploading...
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Publish Video
+                </div>
+              )}
+            </Button>
+          </form>
         </div>
       </div>
     </Layout>

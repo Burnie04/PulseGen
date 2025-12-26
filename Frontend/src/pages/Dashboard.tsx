@@ -10,7 +10,6 @@ import { useToast } from '../hooks/use-toast';
 
 type VideoStatus = 'uploading' | 'processing' | 'safe' | 'flagged' | 'error';
 
-// NEW: Interface for raw data coming from MongoDB
 interface MongoVideo {
   _id: string;
   title: string;
