@@ -72,8 +72,12 @@ export const apiClient = {
   },
 
   async getProfile(token: string) {
-    const response = await fetchAPI('/auth/me', { token });
-    return response.json();
+    try {
+      const response = await fetchAPI('/auth/me', { token });
+      return response.json();
+    } catch (error) {
+      throw new Error('Failed to get user profile. Please try again.');
+    }
   },
 
   async uploadVideo(

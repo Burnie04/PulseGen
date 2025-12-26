@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
-
+import API_BASE_URL from '../config';
 export interface UserProfile {
   id: string;
   email: string;
@@ -51,17 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'viewer' | 'editor' | 'admin' = 'viewer') => {
+ const signUp = async (email: string, password: string, displayName?: string) => {
     try {
-      const { token: newToken, user: newUser } = await apiClient.register(email, password, fullName, role);
-      localStorage.setItem('auth_token', newToken);
-      setToken(newToken);
-      setUser(newUser);
-      return { error: null };
-    } catch (error) {
-      return { error: error instanceof Error ? error : new Error('Registration failed') };
-    }
-  };
+      // 👇 USE IT HERE
+      const res = await fetch(`${API_BASE_URL}/api/auth/signup`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, displayName }),
+      });
 
   const signIn = async (email: string, password: string) => {
     try {
