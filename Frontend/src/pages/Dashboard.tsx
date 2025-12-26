@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Video, TrendingUp, Clock } from 'lucide-react';
-import { Layout } from '@/components/Layout';
-import { VideoCard } from '@/components/VideoCard';
-import { FilterBar } from '@/components/FilterBar';
-import { Button } from '@/components/ui/button';
-// CHANGED: Removed Supabase imports
-import { apiClient } from '@/lib/api'; 
-import { useToast } from '@/hooks/use-toast';
+import { Layout } from "../components/Layout";
+import { VideoCard } from "../components/VideoCard";
+import { FilterBar } from "../components/FilterBar";
+import { Button } from "../components/ui/button";
+import { apiClient } from "../lib/api";
+import { useToast } from "../hooks/use-toast";
 
 type VideoStatus = 'uploading' | 'processing' | 'safe' | 'flagged' | 'error';
 
@@ -19,7 +18,7 @@ interface VideoData {
   duration: number | null;
   created_at: string;
   file_path: string;
-  thumbnailUrl?: string; // Added to support thumbnails
+  thumbnailUrl?: string; 
 }
 
 export default function Dashboard() {
@@ -50,7 +49,6 @@ export default function Dashboard() {
         ? data.map((v: any) => ({
             id: v._id,
             title: v.title,
-            // Default status to 'safe' since we don't have processing logic yet
             status: 'safe', 
             processing_progress: 100,
             duration: v.duration || 0,
