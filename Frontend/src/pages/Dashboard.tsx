@@ -1,14 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Video, TrendingUp, Clock } from 'lucide-react';
-import { Layout } from "../components/Layout";
-import { VideoCard } from "../components/VideoCard";
-import { FilterBar } from "../components/FilterBar";
-import { Button } from "../components/ui/button";
-import { apiClient } from "../lib/api";
-import { useToast } from "../hooks/use-toast";
+import { Layout } from '../components/Layout';
+import { VideoCard } from '../components/VideoCard';
+import { FilterBar } from '../components/FilterBar';
+import { Button } from '../components/ui/button';
+import { apiClient } from '../lib/api'; 
+import { useToast } from '../hooks/use-toast';
 
 type VideoStatus = 'uploading' | 'processing' | 'safe' | 'flagged' | 'error';
+
+// NEW: Interface for raw data coming from MongoDB
+interface MongoVideo {
+  _id: string;
+  title: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  duration?: number;
+  createdAt: string;
+}
 
 interface VideoData {
   id: string;
@@ -18,7 +28,7 @@ interface VideoData {
   duration: number | null;
   created_at: string;
   file_path: string;
-  thumbnailUrl?: string; 
+  thumbnailUrl?: string;
 }
 
 export default function Dashboard() {
@@ -30,54 +40,50 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // CHANGED: Auth check using LocalStorage token instead of useAuth hook
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/auth');
       return;
     }
-    fetchVideos(token);
-  }, [navigate]);
 
-  const fetchVideos = async (token: string) => {
-    try {
-      // CHANGED: Use apiClient instead of supabase.from()
-      const data = await apiClient.getVideos(token);
-      
-      // MAPPING: Convert MongoDB data (_id) to Frontend structure (id)
-      const mappedVideos: VideoData[] = Array.isArray(data) 
-        ? data.map((v: any) => ({
-            id: v._id,
-            title: v.title,
-            status: 'safe', 
-            processing_progress: 100,
-            duration: v.duration || 0,
-            created_at: v.createdAt,
-            file_path: v.videoUrl,
-            thumbnailUrl: v.thumbnailUrl
-          }))
-        : [];
+    // FIX 1: Defined fetchVideos INSIDE useEffect to solve dependency warning
+    const fetchVideos = async () => {
+      try {
+        const data = await apiClient.getVideos(token);
+        
+        // FIX 2: Cast 'data' to MongoVideo[] to fix "Unexpected any" error
+        const mappedVideos: VideoData[] = Array.isArray(data) 
+          ? (data as MongoVideo[]).map((v) => ({
+              id: v._id,
+              title: v.title,
+              status: 'safe', 
+              processing_progress: 100,
+              duration: v.duration || 0,
+              created_at: v.createdAt,
+              file_path: v.videoUrl,
+              thumbnailUrl: v.thumbnailUrl
+            }))
+          : [];
 
-      setVideos(mappedVideos);
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-      toast({ title: 'Error', description: 'Failed to fetch videos', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
+        setVideos(mappedVideos);
+      } catch (error) {
+        console.error('Error fetching videos:', error);
+        toast({ title: 'Error', description: 'Failed to fetch videos', variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // REMOVED: subscribeToUpdates (Real-time not supported in this simple backend version yet)
+    fetchVideos();
+  }, [navigate, toast]); 
 
   const handleDelete = async (id: string) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // CHANGED: Use apiClient instead of supabase
       await apiClient.deleteVideo(token, id);
       
-      // Update local state
       setVideos(prev => prev.filter(v => v.id !== id));
       toast({ title: 'Deleted', description: 'Video removed successfully' });
     } catch (error) {
