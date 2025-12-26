@@ -8,10 +8,10 @@ import {
   LogOut,
   Play
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { cn } from "../lib/utils";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/ui/button";
+import { Separator } from "../components/ui/separator";
 
 interface NavItemProps {
   to: string;

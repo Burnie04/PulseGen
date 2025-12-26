@@ -1,15 +1,15 @@
 import { formatDistanceToNow } from 'date-fns';
 import { Play, Clock, MoreVertical, Trash2 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
+import { Progress } from "../components/ui/progress";
+import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+} from "../components/ui/dropdown-menu";
+import { cn } from "../lib/utils";
 
 interface VideoCardProps {
   id: string;

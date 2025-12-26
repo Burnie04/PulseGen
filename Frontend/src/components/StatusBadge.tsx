@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from "../lib/utils";
 import { CheckCircle, AlertTriangle, Clock, Upload, XCircle } from 'lucide-react';
 
 type VideoStatus = 'uploading' | 'processing' | 'safe' | 'flagged' | 'error';

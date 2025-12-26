@@ -1,6 +1,6 @@
 import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
+import { Progress } from "../components/ui/progress";
+import { cn } from "../lib/utils";
 
 interface UploadProgressProps {
   fileName: string;

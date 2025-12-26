@@ -9,9 +9,9 @@ import {
   SkipBack,
   SkipForward
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
+import { Button } from "../components/ui/button";
+import { Slider } from "../components/ui/slider";
+import { cn } from "../lib/utils";
 
 interface VideoPlayerProps {
   src: string;
