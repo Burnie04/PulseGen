@@ -1,20 +1,77 @@
-import { useAuth } from './contexts/AuthContext';
-import AuthPage from './components/Auth/AuthPage';
-import Dashboard from './components/Dashboard/Dashboard';
-import { Loader } from 'lucide-react';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import Upload from "./pages/Upload";
+import NotFound from "./pages/NotFound";
 
-function App() {
+const queryClient = new QueryClient();
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-
+  
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <Loader className="w-8 h-8 text-blue-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
   }
-
-  return user ? <Dashboard /> : <AuthPage />;
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
 }
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+  
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+      <Route path="/videos" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
