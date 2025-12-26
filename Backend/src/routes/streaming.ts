@@ -1,18 +1,18 @@
 import { Router } from 'express';
-import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import { optionalAuthMiddleware, AuthRequest } from '../middleware/auth.js';
 import { Video } from '../models/Video.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-router.get('/:videoId', optionalAuthMiddleware, async (req, res, next) => {
+router.get('/:videoId', optionalAuthMiddleware, async (req: AuthRequest, res, next) => {
   try {
     const video = await Video.findById(req.params.videoId);
     if (!video) {
       throw new AppError('Video not found', 404);
     }
 
-    if (!video.isPublic && !(req as any).user) {
+    if (!video.isPublic && !req.user) {
       throw new AppError('Unauthorized access', 401);
     }
 

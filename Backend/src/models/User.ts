@@ -1,9 +1,9 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 
 export type UserRole = 'viewer' | 'editor' | 'admin';
 
-export interface IUser extends Document {
+export interface IUser {
   email: string;
   password: string;
   fullName: string;
@@ -24,32 +24,37 @@ const userSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
       match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        /^[\w.-]+@[\w.-]+\.\w{2,}$/,
         'Please provide a valid email',
       ],
       index: true,
     },
+
     password: {
       type: String,
       required: true,
       minlength: 6,
       select: false,
     },
+
     fullName: {
       type: String,
       required: true,
       trim: true,
     },
+
     role: {
       type: String,
       enum: ['viewer', 'editor', 'admin'],
       default: 'viewer',
     },
+
     organizationId: {
       type: Schema.Types.ObjectId,
       ref: 'Organization',
       default: null,
     },
+
     avatarUrl: {
       type: String,
       default: null,
