@@ -1,4 +1,12 @@
-const API_BASE_URL = import.meta.env.local.VITE_API_URL || 'http://localhost:5000/api';
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface FetchOptions extends RequestInit {
   token?: string;
