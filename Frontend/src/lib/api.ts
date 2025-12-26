@@ -9,13 +9,14 @@ export const fetchAPI = async (
   options: FetchOptions = {}
 ): Promise<Response> => {
   const { token, ...fetchOptions } = options;
-  const headers: HeadersInit = {
+  
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...fetchOptions.headers,
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const url = `${API_BASE_URL}${endpoint}`;
@@ -28,7 +29,7 @@ export const fetchAPI = async (
     const error = await response.json().catch(() => ({
       error: 'Network error',
     }));
-    throw new Error(error.error || 'API request failed');
+    throw new Error(error.error || error.message || 'API request failed');
   }
 
   return response;
@@ -58,31 +59,15 @@ export const apiClient = {
 
   async uploadVideo(
     token: string,
-    file: File,
+    fileUrl: string,
     title: string,
     description: string
   ) {
-    const formData = new FormData();
-    formData.append('video', file);
-    formData.append('title', title);
-    formData.append('description', description);
-
-    const url = `${API_BASE_URL}/videos`;
-    const response = await fetch(url, {
+    const response = await fetchAPI('/videos', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
+      token,
+      body: JSON.stringify({ title, fileUrl, description, isPublic: false }),
     });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        error: 'Upload failed',
-      }));
-      throw new Error(error.error || 'Video upload failed');
-    }
-
     return response.json();
   },
 
@@ -119,6 +104,7 @@ export const apiClient = {
   },
 
   getStreamUrl(token: string, videoId: string): string {
-    return `${API_BASE_URL}/stream/${videoId}?token=${token}`;
+    // Ensure this route exists in your backend (usually added in index.ts)
+    return `${API_BASE_URL}/videos/stream/${videoId}?token=${token}`;
   },
 };
