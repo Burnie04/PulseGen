@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { apiClient } from '../lib/api';
 
 export interface User {
   id: string;
@@ -29,18 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 1. Fixed fetchUserProfile
   const fetchUserProfile = async (currentToken: string) => {
     try {
-      const response = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${currentToken}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        setRole(data.role || 'viewer');
-      } else {
-        signOut();
-      }
-    } catch (error: unknown) { // FIXED: Use unknown
+      const response = await apiClient.getProfile(currentToken);
+      setUser(response.user);
+      setRole(response.role || 'viewer');
+    } catch (error: unknown) {
       console.error("Failed to fetch user:", error);
       signOut();
     } finally {
@@ -51,15 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 2. Fixed signUp
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Signup failed');
-
+      const data = await apiClient.register(email, password, displayName || '', 'viewer');
+      
       if (data.token) {
         localStorage.setItem('token', data.token);
         setToken(data.token);
@@ -68,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null };
-    } catch (err: unknown) { // FIXED: Use unknown
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Signup failed';
       return { error: errorMessage };
     }
@@ -77,22 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 3. Fixed signIn
   const signIn = async (email: string, password: string) => {
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Login failed');
-
+      const data = await apiClient.login(email, password);
+      
       localStorage.setItem('token', data.token);
       setToken(data.token);
       setUser(data.user);
       setRole(data.role);
 
       return { error: null };
-    } catch (err: unknown) { // FIXED: Use unknown
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
       return { error: errorMessage };
     }
@@ -131,7 +110,3 @@ export function useAuth() {
   }
   return context;
 }
-
-function signOut() {
-    throw new Error('Function not implemented.');
-  }

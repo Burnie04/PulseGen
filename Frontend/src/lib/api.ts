@@ -34,9 +34,12 @@ export const fetchAPI = async (
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: 'Network error',
-    }));
+    let error;
+    try {
+      error = await response.json();
+    } catch {
+      error = { error: `HTTP ${response.status}: ${response.statusText}` };
+    }
     throw new Error(error.error || error.message || 'API request failed');
   }
 
@@ -45,19 +48,27 @@ export const fetchAPI = async (
 
 export const apiClient = {
   async register(email: string, password: string, fullName: string, role: string) {
-    const response = await fetchAPI('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, fullName, role }),
-    });
-    return response.json();
+    try {
+      const response = await fetchAPI('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, fullName, role }),
+      });
+      return response.json();
+    } catch (error) {
+      throw new Error('Registration failed. Please check your connection.');
+    }
   },
 
   async login(email: string, password: string) {
-    const response = await fetchAPI('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    return response.json();
+    try {
+      const response = await fetchAPI('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      return response.json();
+    } catch (error) {
+      throw new Error('Login failed. Please check your credentials.');
+    }
   },
 
   async getProfile(token: string) {
